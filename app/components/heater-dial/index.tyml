@@ -5,7 +5,7 @@
       class="dial-canvas"
       disable-scroll="{{true}}"
       bind:touchstart="onTouchStart"
-      bind:touchmove="onTouchMove"
+      catch:touchmove="onTouchMove"
       bind:touchend="onTouchEnd"
       bind:touchcancel="onTouchEnd"
     ></canvas>

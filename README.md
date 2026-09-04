@@ -14,7 +14,7 @@ Then, use the MiniApp developer tool to import the project and open the sample.
 
 ## References
 
-For more information about the framework, components, APIs, and tutorials, see [MiniApp](https://developer.tuya.com/cn/miniapp).
+For more information about the framework, components, APIs, and tutorials, see [MiniApp](https://developer.tuya.com/en/miniapp/).
 
 ## Technical support
 

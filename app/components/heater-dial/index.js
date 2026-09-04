@@ -61,24 +61,32 @@ Component({
   },
   methods: {
     syncDisplay(value, unit, minF, maxF) {
-      const tempF = clamp(value, minF, maxF);
+      const safeMin = typeof minF === 'number' ? minF : 80;
+      const safeMax = typeof maxF === 'number' ? maxF : 150;
+      const safeUnit = unit === 'C' ? 'C' : 'F';
+      const tempF = clamp(typeof value === 'number' ? value : 130, safeMin, safeMax);
       this.setData({
-        displayTemp: unit === 'C' ? fToC(tempF) : Math.round(tempF),
-        minLabel: formatBound(minF, unit),
-        maxLabel: formatBound(maxF, unit),
+        displayTemp: safeUnit === 'C' ? fToC(tempF) : Math.round(tempF),
+        minLabel: formatBound(safeMin, safeUnit),
+        maxLabel: formatBound(safeMax, safeUnit),
       });
     },
     measureCanvas(done) {
-      ty.createSelectorQuery()
-        .in(this)
-        .select('.dial-canvas')
-        .boundingClientRect((rect) => {
-          this.canvasRect = rect || { width: 280, height: 280 };
-          if (typeof done === 'function') {
-            done();
-          }
-        })
-        .exec();
+      const applySize = (windowWidth) => {
+        const px = (560 / 750) * (windowWidth || 375);
+        this.canvasRect = { width: px, height: px };
+        if (typeof done === 'function') {
+          done();
+        }
+      };
+      if (typeof ty.getSystemInfoSync === 'function') {
+        applySize(ty.getSystemInfoSync().windowWidth);
+        return;
+      }
+      ty.getSystemInfo({
+        success: (info) => applySize(info.windowWidth),
+        fail: () => applySize(375),
+      });
     },
     tempToAngle(tempF) {
       const { minF, maxF } = this.data;
@@ -114,10 +122,14 @@ Component({
     },
     emitTemp(tempF) {
       const next = clamp(tempF, this.data.minF, this.data.maxF);
-      if (next === this.data.value) {
-        this.drawDial();
+      if (next === this.liveTemp) {
         return;
       }
+      this.liveTemp = next;
+      this.setData({
+        displayTemp: this.data.unit === 'C' ? fToC(next) : Math.round(next),
+      });
+      this.drawDial(next);
       this.triggerEvent('change', { value: next });
     },
     getTouchPoint(e) {
@@ -151,7 +163,7 @@ Component({
     onTouchEnd() {
       this.dragging = false;
     },
-    drawDial() {
+    drawDial(tempF) {
       const rect = this.canvasRect;
       if (!rect || !rect.width) {
         return;
@@ -162,7 +174,13 @@ Component({
       const cx = width / 2;
       const cy = height / 2;
       const radius = Math.min(width, height) / 2 - 28;
-      const angle = this.tempToAngle(this.data.value);
+      const value =
+        typeof tempF === 'number'
+          ? tempF
+          : typeof this.liveTemp === 'number'
+            ? this.liveTemp
+            : this.data.value;
+      const angle = this.tempToAngle(value);
 
       ctx.clearRect(0, 0, width, height);
 

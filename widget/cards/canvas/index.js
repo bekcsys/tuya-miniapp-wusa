@@ -1,35 +1,49 @@
-import Render from './index.rjs';
+function fToC(tempF) {
+  return Math.round((tempF - 32) * (5 / 9));
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
 
 Widget({
   data: {
-    time: '2023-03-01 10:36',
-    long: 0,
+    tempF: 130,
+    minF: 80,
+    maxF: 150,
+    unit: 'F',
+    displayTemp: 130,
+    minLabel: '80°',
+    maxLabel: '150°',
   },
-  onLoad(e) {
-    console.log('onLoad', e);
+  onLoad() {
+    this.syncDisplay(this.data.tempF, this.data.unit);
   },
-  onReady() {
-    this.render = new Render(this);
-    this.drawChart();
-  },
-  async drawChart() {
-    this.render.drawBuArc({ percent: 35, value: 3500 });
-    this.render.drawKcalArc({ percent: 80, value: 800 });
+  syncDisplay(tempF, unit) {
+    const { minF, maxF } = this.data;
     this.setData({
-      long: Math.floor(3500 * 0.6),
+      displayTemp: unit === 'C' ? fToC(tempF) : Math.round(tempF),
+      minLabel: unit === 'C' ? `${fToC(minF)}°` : `${minF}°`,
+      maxLabel: unit === 'C' ? `${fToC(maxF)}°` : `${maxF}°`,
     });
   },
-  async tap() {
-    ty.showToast({ title: 'success' });
-    const systemInfo = await ty.getSystemInfo();
-    console.log('systemInfo', systemInfo);
+  applyTemp(tempF) {
+    const next = clamp(Math.round(tempF), this.data.minF, this.data.maxF);
+    this.setData({ tempF: next });
+    this.syncDisplay(next, this.data.unit);
   },
-  jumpToH5() {
-    ty.openInnerH5({
-      url: 'https://www.baidu.com/',
-      complete: () => {
-        console.log('ty.openInnerH5');
-      },
-    });
+  onSliderChanging(e) {
+    this.applyTemp(e.detail.value);
+  },
+  onSliderChange(e) {
+    this.applyTemp(e.detail.value);
+  },
+  setUnitF() {
+    this.setData({ unit: 'F' });
+    this.syncDisplay(this.data.tempF, 'F');
+  },
+  setUnitC() {
+    this.setData({ unit: 'C' });
+    this.syncDisplay(this.data.tempF, 'C');
   },
 });
