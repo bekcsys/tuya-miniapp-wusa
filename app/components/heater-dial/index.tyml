@@ -1,0 +1,25 @@
+<view class="dial-root">
+  <view class="dial-stage">
+    <canvas
+      canvas-id="heaterDial"
+      class="dial-canvas"
+      disable-scroll="{{true}}"
+      bind:touchstart="onTouchStart"
+      bind:touchmove="onTouchMove"
+      bind:touchend="onTouchEnd"
+      bind:touchcancel="onTouchEnd"
+    ></canvas>
+    <view class="dial-center">
+      <view class="temp-row">
+        <text class="temp-value">{{displayTemp}}</text>
+        <text class="temp-unit">°{{unit}}</text>
+      </view>
+      <text class="temp-label">{{I18n.t('target')}}</text>
+    </view>
+  </view>
+  <view class="range-row">
+    <text class="range-label">{{minLabel}}</text>
+    <text class="range-hint">{{I18n.t('dragHint')}}</text>
+    <text class="range-label">{{maxLabel}}</text>
+  </view>
+</view>

@@ -1,0 +1,43 @@
+<view class="page">
+  <view class="top-row">
+    <view class="heading">
+      <text class="kicker">{{I18n.t('heater')}}</text>
+      <text class="title">{{I18n.t('sauna')}}</text>
+    </view>
+    <view class="unit-toggle">
+      <view class="unit-opt {{unit === 'F' ? 'active' : ''}}" bind:tap="setUnitF">°F</view>
+      <view class="unit-opt {{unit === 'C' ? 'active' : ''}}" bind:tap="setUnitC">°C</view>
+    </view>
+  </view>
+
+  <heater-dial
+    value="{{tempF}}"
+    unit="{{unit}}"
+    min-f="{{minF}}"
+    max-f="{{maxF}}"
+    bind:change="onTempChange"
+  ></heater-dial>
+
+  <view class="power-card {{heaterOn ? 'on' : ''}}" bind:tap="toggleHeater">
+    <view class="power-dot"></view>
+    <view class="power-copy">
+      <text class="power-state">{{heaterLabel}}</text>
+      <text class="power-sub">{{statusLine}}</text>
+    </view>
+    <view class="power-switch {{heaterOn ? 'on' : ''}}">
+      <view class="power-knob"></view>
+    </view>
+  </view>
+
+  <view class="stats">
+    <view class="stat">
+      <text class="stat-label">{{I18n.t('current')}}</text>
+      <text class="stat-value">{{currentDisplay}}</text>
+    </view>
+    <view class="stat-divider"></view>
+    <view class="stat">
+      <text class="stat-label">{{I18n.t('maxTemp')}}</text>
+      <text class="stat-value">{{maxDisplay}}</text>
+    </view>
+  </view>
+</view>

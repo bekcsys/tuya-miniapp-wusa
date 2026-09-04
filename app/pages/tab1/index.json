@@ -1,0 +1,11 @@
+{
+  "navigationBarBackgroundColor": "#161210",
+  "navigationBarTextStyle": "white",
+  "navigationBarTitleText": "Sauna",
+  "backgroundColor": "#161210",
+  "backgroundTextStyle": "light",
+  "enablePullDownRefresh": false,
+  "usingComponents": {
+    "heater-dial": "/components/heater-dial/index"
+  }
+}

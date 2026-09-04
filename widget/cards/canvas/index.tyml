@@ -1,0 +1,38 @@
+<view class="card-wrapper">
+  <view class="header">
+    <view>
+      <view class="kicker">{{I18n.t('heater')}}</view>
+      <view class="title">{{I18n.t('sauna')}}</view>
+    </view>
+    <view class="unit-toggle">
+      <view class="unit-opt {{unit === 'F' ? 'active' : ''}}" bind:tap="setUnitF">°F</view>
+      <view class="unit-opt {{unit === 'C' ? 'active' : ''}}" bind:tap="setUnitC">°C</view>
+    </view>
+  </view>
+
+  <view class="temp-block">
+    <view class="temp-row">
+      <text class="temp-value">{{displayTemp}}</text>
+      <text class="temp-unit">°{{unit}}</text>
+    </view>
+    <text class="temp-label">{{I18n.t('target')}}</text>
+  </view>
+
+  <slider
+    class="heat-slider"
+    min="{{minF}}"
+    max="{{maxF}}"
+    value="{{tempF}}"
+    step="1"
+    activeColor="#e8a54b"
+    backgroundColor="rgba(0,0,0,0.08)"
+    block-size="20"
+    bind:changing="onSliderChanging"
+    bind:change="onSliderChange"
+  />
+
+  <view class="range-row">
+    <text>{{minLabel}}</text>
+    <text>{{maxLabel}}</text>
+  </view>
+</view>

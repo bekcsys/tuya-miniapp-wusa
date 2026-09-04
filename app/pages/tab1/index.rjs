@@ -1,0 +1,73 @@
+import F2 from '@antv/f2/lib/index';
+import lottie from 'lottie-miniapp';
+import { lottieData } from './lottie-data';
+import { windowAdapter, documentAdapter } from '@tuya-miniapp/rjs-adapter'
+
+function copyProperties(target = {}, source = {}) {
+  Object.keys(source).forEach(propName => {
+    target[propName] = source[propName]
+  });
+}
+
+windowAdapter((window) => copyProperties(window));
+documentAdapter((document) => copyProperties(document));
+
+const data = [
+  { time: 1, type: 1, percent: 100 },
+  { time: 2, type: 2, percent: 100 },
+  { time: 3, type: 1, percent: 100 },
+  { time: 4, type: 1, percent: 100 },
+  { time: 5, type: 3, percent: 100 },
+  { time: 6, type: 2, percent: 100 },
+  { time: 7, type: 2, percent: 100 },
+  { time: 8, type: 3, percent: 100 },
+  { time: 9, type: 1, percent: 100 },
+  { time: 10, type: 2, percent: 100 },
+  { time: 11, type: 1, percent: 100 },
+  { time: 12, type: 1, percent: 100 },
+];
+
+export default Render({
+  async renderLottie() {
+    let canvas = await getCanvasById('load');
+    let canvasContext = canvas.getContext('2d');
+    lottie.loadAnimation({
+      renderer: 'canvas', // 只支持canvas
+      loop: true,
+      autoplay: true,
+      animationData: lottieData,
+      // path: animationPath,
+      rendererSettings: {
+        // 这里需要填 canvas
+        canvas: canvas,
+        context: canvasContext,
+        clearCanvas: true,
+      },
+    });
+  },
+  async drawSleep(newVal) {
+    const canvas = await getCanvasById('sleep');
+    const chart = new F2.Chart({
+      el: canvas,
+      padding: 0,
+      appendPadding: 0,
+      pixelRatio: getSystemInfo().pixelRatio || 2
+    });
+
+    chart.source(data);
+
+    chart.axis(false);
+    chart.tooltip(false);
+
+    chart.interval()
+      .position('time*percent')
+      .color('type', [ '#BF73DE', 'rgb(222, 184, 238)', 'rgb(248, 237, 251)', 'rgb(251, 204, 84)'])
+      .size(28)
+      .adjust({
+        type: 'dodge',
+        marginRatio: 0,
+      });
+
+    chart.render();
+  },
+});

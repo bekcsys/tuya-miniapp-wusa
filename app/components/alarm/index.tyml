@@ -1,0 +1,1 @@
+<view class="title">{{I18n.t('switch')}}</view>
