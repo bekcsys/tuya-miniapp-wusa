@@ -1,43 +1,255 @@
 <view class="page">
-  <view class="top-row">
-    <view class="heading">
-      <text class="kicker">{{I18n.t('heater')}}</text>
-      <text class="title">{{I18n.t('sauna')}}</text>
-    </view>
-    <view class="unit-toggle">
-      <view class="unit-opt {{unit === 'F' ? 'active' : ''}}" bind:tap="setUnitF">°F</view>
-      <view class="unit-opt {{unit === 'C' ? 'active' : ''}}" bind:tap="setUnitC">°C</view>
-    </view>
-  </view>
-
-  <heater-dial
-    value="{{tempF}}"
-    unit="{{unit}}"
-    min-f="{{minF}}"
-    max-f="{{maxF}}"
-    bind:change="onTempChange"
-  ></heater-dial>
-
-  <view class="power-card {{heaterOn ? 'on' : ''}}" bind:tap="toggleHeater">
-    <view class="power-dot"></view>
-    <view class="power-copy">
-      <text class="power-state">{{heaterLabel}}</text>
-      <text class="power-sub">{{statusLine}}</text>
-    </view>
-    <view class="power-switch {{heaterOn ? 'on' : ''}}">
-      <view class="power-knob"></view>
+  <view class="topbar" style="padding-top: {{statusBarHeight}}px;">
+    <view class="topbar-row">
+      <view class="top-btn" bind:tap="goHome">
+        <view class="back"></view>
+      </view>
+      <view class="top-title">Wellness USA</view>
+      <view class="top-btn"></view>
     </view>
   </view>
 
-  <view class="stats">
-    <view class="stat">
-      <text class="stat-label">{{I18n.t('current')}}</text>
-      <text class="stat-value">{{currentDisplay}}</text>
+  <view wx:if="{{navTab === 'sauna'}}">
+  <view
+    class="gauge"
+    bind:touchstart="onGaugeStart"
+    catch:touchmove="onGaugeMove"
+    bind:touchend="onGaugeEnd"
+    bind:touchcancel="onGaugeEnd"
+  >
+    <view class="ring">
+      <view class="ring-hole"></view>
     </view>
-    <view class="stat-divider"></view>
-    <view class="stat">
-      <text class="stat-label">{{I18n.t('maxTemp')}}</text>
-      <text class="stat-value">{{maxDisplay}}</text>
+    <view wx:for="{{tempMarks}}" wx:key="deg" class="tick-arm" style="transform: rotate({{item.deg}}deg);">
+      <view class="tick"></view>
+      <view class="tick-lab" style="transform: rotate({{item.rot}}deg);">{{item.label}}</view>
+    </view>
+    <view class="target-ring">
+      <view class="target-hole"></view>
+    </view>
+    <view class="arm" style="transform: rotate({{knobDeg}}deg);">
+      <view class="needle"></view>
+    </view>
+    <view class="arm" style="transform: rotate({{targetKnobDeg}}deg);">
+      <view class="target-knob"></view>
+    </view>
+    <view class="core">
+      <text class="temp-num">{{gaugeTemp}}</text>
+      <view class="seg">
+        <view class="{{cSegClass}}" catch:tap="setUnitC">C</view>
+        <view class="{{fSegClass}}" catch:tap="setUnitF">F</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="{{adjustPanelClass}}">
+    <view class="adjust-block">
+      <view class="adjust-head">
+        <view class="adjust-name">Adjust temperature</view>
+        <view class="adj-value">{{targetDisplay}}</view>
+      </view>
+      <slider
+        min="{{tempMin}}"
+        max="{{tempMax}}"
+        step="1"
+        value="{{tempSlider}}"
+        activeColor="#e31b23"
+        backgroundColor="#1a3a52"
+        block-size="28"
+        disabled="{{setDisabled}}"
+        bind:changing="onTempSlide"
+        bind:change="onTempSlide"
+      />
+    </view>
+    <view class="adjust-block">
+      <view class="adjust-head">
+        <view class="adjust-name">Adjust session timer</view>
+        <view class="{{timerCapClass}}">{{timerLabel}}</view>
+      </view>
+      <slider
+        min="10"
+        max="91"
+        step="1"
+        value="{{timerSlider}}"
+        activeColor="#7ec8e3"
+        backgroundColor="#1a3a52"
+        block-size="28"
+        disabled="{{setDisabled}}"
+        bind:changing="onTimerSlide"
+        bind:change="onTimerSlide"
+      />
+    </view>
+  </view>
+
+  <view class="power-row">
+    <view class="power-col">
+      <view class="{{heaterClass}}" bind:tap="toggleHeater">
+        <image class="heater-icon" src="/assets/images/heater.png" mode="aspectFit"></image>
+      </view>
+      <view class="power-label">{{heaterLabel}}</view>
+    </view>
+    <view class="power-col">
+      <view class="{{colorClass}}" bind:tap="toggleLed">
+        <view class="led-mini"></view>
+      </view>
+      <view class="power-label">Color Lights</view>
+    </view>
+    <view class="power-col">
+      <view class="{{saltClass}}" bind:tap="toggleSalt">
+        <view class="lamp">
+          <view class="lamp-bulb"></view>
+          <view class="lamp-neck"></view>
+          <view class="lamp-base"></view>
+        </view>
+      </view>
+      <view class="power-label">Salt Lights</view>
+    </view>
+    <view class="power-col">
+      <view class="{{readingClass}}" bind:tap="toggleReading">
+        <view class="lamp">
+          <view class="lamp-bulb"></view>
+          <view class="lamp-neck"></view>
+          <view class="lamp-base"></view>
+        </view>
+      </view>
+      <view class="power-label">Reading Lights</view>
+    </view>
+  </view>
+
+  <view class="led-panel">
+    <view class="led-title">Color Lights</view>
+    <view
+      id="spectrum"
+      class="{{spectrumClass}}"
+      bind:tap="onHueTap"
+      bind:touchstart="onHueStart"
+      catch:touchmove="onHueMove"
+      bind:touchend="onHueEnd"
+      bind:touchcancel="onHueEnd"
+    >
+      <view class="spectrum-ring"></view>
+      <view class="spectrum-hole"></view>
+      <view class="arm" style="transform: rotate({{hueDeg}}deg);">
+        <view class="hue-knob" style="background-color: {{ledCss}};"></view>
+      </view>
+      <view
+        class="led-orb"
+        style="{{ledOrbStyle}}"
+        catch:touchstart="onLedOrbTouch"
+        catch:tap="toggleLed"
+      ></view>
+    </view>
+    <view class="{{ledMeterClass}}">
+      <view class="led-meter-name">Brightness</view>
+      <slider
+        min="0"
+        max="100"
+        step="1"
+        value="{{val}}"
+        disabled="{{ledSliderDisabled}}"
+        activeColor="{{ledHex}}"
+        backgroundColor="#1a3a52"
+        block-size="24"
+        bind:changing="onValSlide"
+        bind:change="onValSlide"
+      />
+    </view>
+  </view>
+
+  <view class="{{shutdownClass}}" bind:tap="toggleSauna">{{shutdownLabel}}</view>
+  </view>
+
+  <view wx:elif="{{navTab === 'health'}}" class="health">
+    <view class="health-hero">
+      <view class="heart heart-lg">
+        <view class="heart-l"></view>
+        <view class="heart-r"></view>
+      </view>
+      <text class="health-bpm">{{hrBpm}}</text>
+      <text class="health-unit">BPM</text>
+      <text class="health-status">{{hrStatus}}</text>
+    </view>
+    <view class="health-row">
+      <view class="health-card health-card-wide">
+        <text class="health-card-val">{{spo2}}</text>
+        <text class="health-card-lab">Blood oxygen</text>
+        <text class="health-card-sub">{{spo2Status}}</text>
+      </view>
+      <view class="health-card health-card-wide">
+        <text class="health-card-val">{{kcalBurn}}</text>
+        <text class="health-card-lab">Calories burned</text>
+      </view>
+    </view>
+    <view class="health-panel health-runs">
+      <text class="health-runs-val">{{healthSessions}}</text>
+      <text class="health-runs-lab">Total sauna session runs</text>
+    </view>
+    <view class="health-panel">
+      <view class="health-panel-title">Sauna health tips</view>
+      <view wx:for="{{healthTips}}" wx:key="key" class="tip-row">
+        <view class="tip-dot"></view>
+        <text class="tip-text">{{item.text}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:elif="{{navTab === 'sound'}}" class="sound">
+    <view class="sound-title">Solfeggio Frequencies</view>
+    <view class="sound-hero">
+      <text class="sound-hz">{{toneHz}}</text>
+      <text class="sound-unit">Hz</text>
+      <text class="sound-name">{{toneName}}</text>
+      <text class="sound-note">{{toneNote}}</text>
+      <view class="{{tonePlayClass}}" bind:tap="toggleTone">{{tonePlayLabel}}</view>
+    </view>
+    <view class="health-panel">
+      <view class="health-panel-title">Volume</view>
+      <slider
+        min="0"
+        max="100"
+        step="1"
+        value="{{toneVol}}"
+        activeColor="#d4a017"
+        backgroundColor="#1a3a52"
+        block-size="24"
+        bind:changing="onToneVol"
+        bind:change="onToneVol"
+      />
+    </view>
+    <view
+      wx:for="{{toneList}}"
+      wx:key="hz"
+      class="{{item.cardClass}}"
+      data-hz="{{item.hz}}"
+      bind:tap="selectTone"
+    >
+      <view class="tone-hz">{{item.hzLabel}}</view>
+      <view class="tone-copy">
+        <view class="tone-title">{{item.name}}</view>
+        <view class="tone-sub">{{item.note}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="tabbar">
+    <view class="{{saunaTabClass}}" data-tab="sauna" bind:tap="selectNav">
+      <view class="tab-ring"></view>
+      <text class="tab-text">Sauna</text>
+    </view>
+    <view class="{{healthTabClass}}" data-tab="health" bind:tap="selectNav">
+      <view class="heart heart-tab">
+        <view class="heart-l"></view>
+        <view class="heart-r"></view>
+      </view>
+      <text class="tab-text">Health</text>
+    </view>
+    <view class="{{soundTabClass}}" data-tab="sound" bind:tap="selectNav">
+      <view class="tone-waves">
+        <view class="tone-bar tone-bar-a"></view>
+        <view class="tone-bar tone-bar-b"></view>
+        <view class="tone-bar tone-bar-c"></view>
+      </view>
+      <text class="tab-text">Sound</text>
     </view>
   </view>
 </view>

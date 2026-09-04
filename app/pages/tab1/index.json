@@ -1,11 +1,10 @@
 {
-  "navigationBarBackgroundColor": "#161210",
+  "navigationStyle": "custom",
+  "navigationBarBackgroundColor": "#0b2744",
   "navigationBarTextStyle": "white",
-  "navigationBarTitleText": "Sauna",
-  "backgroundColor": "#161210",
+  "navigationBarTitleText": "Wellness USA",
+  "backgroundColor": "#0b2744",
   "backgroundTextStyle": "light",
   "enablePullDownRefresh": false,
-  "usingComponents": {
-    "heater-dial": "/components/heater-dial/index"
-  }
+  "usingComponents": {}
 }

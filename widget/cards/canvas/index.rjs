@@ -53,7 +53,7 @@ export default Render({
       top: false,
       style: {
         lineWidth: 3,
-        stroke: '#17C6D1',
+        stroke: '#E8A54B',
         opacity: 0.3
       }
     });
@@ -61,14 +61,14 @@ export default Render({
       position: [ '50%', '45%' ],
       content: newVal.value || 0,
       style: {
-        fill: '#17C6D1',
+        fill: '#E8A54B',
         fontSize: 22,
       }
     });
     chart.interval()
       .position('x*y')
       .size(3)
-      .color('#17C6D1')
+      .color('#E8A54B')
       .animate({
         appear: {
           duration: 1200,
@@ -116,7 +116,7 @@ export default Render({
       top: false,
       style: {
         lineWidth: 3,
-        stroke: '#FF9900',
+        stroke: '#5BD797',
         opacity: 0.3
       }
     });
@@ -124,14 +124,14 @@ export default Render({
       position: [ '50%', '45%' ],
       content: newVal.value || 0,
       style: {
-        fill: '#FF9900',
-        fontSize: 22,
+        fill: '#5BD797',
+        fontSize: 20,
       }
     });
     chartA.interval()
       .position('x*y')
       .size(3)
-      .color('#FF9900')
+      .color('#5BD797')
       .animate({
         appear: {
           duration: 1200,

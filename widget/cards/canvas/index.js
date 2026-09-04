@@ -1,49 +1,98 @@
-function fToC(tempF) {
-  return Math.round((tempF - 32) * (5 / 9));
+import Render from './index.rjs';
+
+function toC(tempF) {
+  return Math.round((tempF - 32) * 5 / 9);
 }
 
-function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, value));
+function readState(done) {
+  if (typeof ty.getStorage !== 'function') {
+    done({});
+    return;
+  }
+  ty.getStorage({
+    key: 'saunaState',
+    success: function (res) {
+      done(res.data || {});
+    },
+    fail: function () {
+      done({});
+    },
+  });
 }
 
 Widget({
   data: {
     tempF: 130,
-    minF: 80,
-    maxF: 150,
     unit: 'F',
     displayTemp: 130,
-    minLabel: '80°',
-    maxLabel: '150°',
+    heaterOn: true,
+    statusLine: 'Heating · 130 F',
   },
-  onLoad() {
-    this.syncDisplay(this.data.tempF, this.data.unit);
+  onLoad(e) {
+    console.log('onLoad', e);
   },
-  syncDisplay(tempF, unit) {
-    const { minF, maxF } = this.data;
-    this.setData({
-      displayTemp: unit === 'C' ? fToC(tempF) : Math.round(tempF),
-      minLabel: unit === 'C' ? `${fToC(minF)}°` : `${minF}°`,
-      maxLabel: unit === 'C' ? `${fToC(maxF)}°` : `${maxF}°`,
+  onReady() {
+    this.render = new Render(this);
+    this.syncFromStore();
+  },
+  onShow() {
+    this.syncFromStore();
+  },
+  onRefresh() {
+    this.syncFromStore();
+  },
+  syncFromStore() {
+    const self = this;
+    readState(function (state) {
+      const tempF = typeof state.tempF === 'number' ? state.tempF : self.data.tempF;
+      const unit = state.unit === 'C' ? 'C' : 'F';
+      const saunaOn = typeof state.saunaOn === 'boolean' ? state.saunaOn : true;
+      const heaterOn = typeof state.heaterOn === 'boolean' ? state.heaterOn : self.data.heaterOn;
+      self.paint(tempF, unit, saunaOn && heaterOn);
     });
   },
-  applyTemp(tempF) {
-    const next = clamp(Math.round(tempF), this.data.minF, this.data.maxF);
-    this.setData({ tempF: next });
-    this.syncDisplay(next, this.data.unit);
+  paint(tempF, unit, heaterOn) {
+    const displayTemp = unit === 'C' ? toC(tempF) : tempF;
+    const unitLabel = unit === 'C' ? 'C' : 'F';
+    const percent = Math.round((tempF - 80) / 70 * 100);
+    const heatText = heaterOn ? 'Heating' : 'Off';
+    this.setData({
+      tempF: tempF,
+      unit: unit,
+      displayTemp: displayTemp,
+      heaterOn: heaterOn,
+      statusLine: heatText + ' · ' + displayTemp + ' ' + unitLabel,
+    });
+    if (!this.render) {
+      return;
+    }
+    this.render.drawBuArc({ percent: percent, value: displayTemp });
+    this.render.drawKcalArc({
+      percent: heaterOn ? 100 : 8,
+      value: heaterOn ? 'ON' : 'OFF',
+    });
   },
-  onSliderChanging(e) {
-    this.applyTemp(e.detail.value);
-  },
-  onSliderChange(e) {
-    this.applyTemp(e.detail.value);
-  },
-  setUnitF() {
-    this.setData({ unit: 'F' });
-    this.syncDisplay(this.data.tempF, 'F');
-  },
-  setUnitC() {
-    this.setData({ unit: 'C' });
-    this.syncDisplay(this.data.tempF, 'C');
+  openApp() {
+    const url =
+      '/pages/tab1/index?tempF=' +
+      this.data.tempF +
+      '&heaterOn=' +
+      (this.data.heaterOn ? '1' : '0') +
+      '&unit=' +
+      this.data.unit;
+    if (typeof ty.navigateTo === 'function') {
+      ty.navigateTo({
+        url: url,
+        fail: function () {
+          if (typeof ty.redirectTo === 'function') {
+            ty.redirectTo({ url: url });
+          }
+        },
+      });
+      return;
+    }
+    if (typeof ty.redirectTo === 'function') {
+      ty.redirectTo({ url: url });
+    }
   },
 });

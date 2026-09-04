@@ -4,7 +4,7 @@
   "i18n": true,
   "miniprogramRoot": "app/",
   "widgetRoot": "widget/",
-  "compileType": "widget",
+  "compileType": "miniprogram",
   "dependencies": {
     "BaseKit": "3.0.6",
     "MiniKit": "3.0.7",
