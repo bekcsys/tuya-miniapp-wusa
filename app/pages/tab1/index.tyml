@@ -10,109 +10,109 @@
   </view>
 
   <view wx:if="{{navTab === 'sauna'}}">
-  <view
-    class="gauge"
-    bind:touchstart="onGaugeStart"
-    catch:touchmove="onGaugeMove"
-    bind:touchend="onGaugeEnd"
-    bind:touchcancel="onGaugeEnd"
-  >
-    <view class="ring">
-      <view class="ring-hole"></view>
+  <view class="gauge-wrap">
+    <view class="gauge">
+      <view class="ring-track">
+        <view class="ring-hole"></view>
+      </view>
+      <view class="ring-fill" style="{{ringStyle}}">
+        <view class="ring-hole"></view>
+      </view>
+      <view wx:for="{{gaugeTicks}}" wx:key="key" class="g-tick-arm" style="transform: rotate({{item.deg}}deg);">
+        <view class="{{item.tickClass}}"></view>
+      </view>
+      <view wx:for="{{gaugeMarks}}" wx:key="key" class="g-tick-arm" style="transform: rotate({{item.deg}}deg);">
+        <view class="g-num" style="transform: rotate({{item.rot}}deg);">{{item.label}}</view>
+      </view>
+      <view class="arm" style="transform: rotate({{knobDeg}}deg);">
+        <view class="g-tick g-tick-now"></view>
+        <view class="gauge-knob"></view>
+      </view>
+      <view class="core">
+        <text class="target-lab">Current</text>
+        <view class="target-line">
+          <text class="temp-num">{{gaugeTemp}}</text>
+          <text class="temp-unit">{{unitMark}}</text>
+        </view>
+        <view class="seg">
+          <view class="{{cSegClass}}" catch:tap="setUnitC">C</view>
+          <view class="{{fSegClass}}" catch:tap="setUnitF">F</view>
+        </view>
+      </view>
     </view>
-    <view wx:for="{{tempMarks}}" wx:key="deg" class="tick-arm" style="transform: rotate({{item.deg}}deg);">
-      <view class="tick"></view>
-      <view class="tick-lab" style="transform: rotate({{item.rot}}deg);">{{item.label}}</view>
-    </view>
-    <view class="target-ring">
-      <view class="target-hole"></view>
-    </view>
-    <view class="arm" style="transform: rotate({{knobDeg}}deg);">
-      <view class="needle"></view>
-    </view>
-    <view class="arm" style="transform: rotate({{targetKnobDeg}}deg);">
-      <view class="target-knob"></view>
-    </view>
-    <view class="core">
-      <text class="temp-num">{{gaugeTemp}}</text>
-      <view class="seg">
-        <view class="{{cSegClass}}" catch:tap="setUnitC">C</view>
-        <view class="{{fSegClass}}" catch:tap="setUnitF">F</view>
+    <view class="heater-dock">
+      <view class="light-item-name">Heater</view>
+      <view class="{{heaterClass}}" bind:tap="toggleHeater">
+        <view class="io-thumb"></view>
+        <view class="io-off-lab">OFF</view>
+        <view class="io-on-lab">ON</view>
       </view>
     </view>
   </view>
 
   <view class="{{adjustPanelClass}}">
-    <view class="adjust-block">
-      <view class="adjust-head">
-        <view class="adjust-name">Adjust temperature</view>
-        <view class="adj-value">{{targetDisplay}}</view>
+      <view class="{{tempBlockClass}}">
+        <view class="adjust-head">
+          <view class="adjust-name">Set temperature</view>
+          <view class="adj-value">{{targetDisplay}}</view>
+        </view>
+        <slider
+          min="{{tempMin}}"
+          max="{{tempMax}}"
+          step="1"
+          value="{{tempSlider}}"
+          activeColor="#e31b23"
+          backgroundColor="#1a3a52"
+          block-size="28"
+          disabled="{{tempDisabled}}"
+          bind:changing="onTempSlide"
+          bind:change="onTempSlide"
+        />
       </view>
-      <slider
-        min="{{tempMin}}"
-        max="{{tempMax}}"
-        step="1"
-        value="{{tempSlider}}"
-        activeColor="#e31b23"
-        backgroundColor="#1a3a52"
-        block-size="28"
-        disabled="{{setDisabled}}"
-        bind:changing="onTempSlide"
-        bind:change="onTempSlide"
-      />
-    </view>
-    <view class="adjust-block">
-      <view class="adjust-head">
-        <view class="adjust-name">Adjust session timer</view>
-        <view class="{{timerCapClass}}">{{timerLabel}}</view>
+      <view class="adjust-block">
+        <view class="adjust-head">
+          <view class="adjust-name">Adjust session timer</view>
+          <view class="{{timerCapClass}}">{{timerLabel}}</view>
+        </view>
+        <slider
+          min="10"
+          max="91"
+          step="1"
+          value="{{timerSlider}}"
+          activeColor="#7ec8e3"
+          backgroundColor="#1a3a52"
+          block-size="28"
+          disabled="{{setDisabled}}"
+          bind:changing="onTimerSlide"
+          bind:change="onTimerSlide"
+        />
       </view>
-      <slider
-        min="10"
-        max="91"
-        step="1"
-        value="{{timerSlider}}"
-        activeColor="#7ec8e3"
-        backgroundColor="#1a3a52"
-        block-size="28"
-        disabled="{{setDisabled}}"
-        bind:changing="onTimerSlide"
-        bind:change="onTimerSlide"
-      />
-    </view>
   </view>
 
-  <view class="power-row">
-    <view class="power-col">
-      <view class="{{heaterClass}}" bind:tap="toggleHeater">
-        <image class="heater-icon" src="/assets/images/heater.png" mode="aspectFit"></image>
+  <view class="light-panel">
+    <view class="light-item">
+      <view class="light-item-name">Salt Lights</view>
+      <view class="{{saltSwitchClass}}" bind:tap="toggleSalt">
+        <view class="io-thumb"></view>
+        <view class="io-off-lab">OFF</view>
+        <view class="io-on-lab">ON</view>
       </view>
-      <view class="power-label">{{heaterLabel}}</view>
     </view>
-    <view class="power-col">
-      <view class="{{colorClass}}" bind:tap="toggleLed">
-        <view class="led-mini"></view>
+    <view class="light-item">
+      <view class="light-item-name">Color Lights</view>
+      <view class="{{ledToggleClass}}" bind:tap="toggleLed">
+        <view class="io-thumb"></view>
+        <view class="io-off-lab">OFF</view>
+        <view class="io-on-lab">ON</view>
       </view>
-      <view class="power-label">Color Lights</view>
     </view>
-    <view class="power-col">
-      <view class="{{saltClass}}" bind:tap="toggleSalt">
-        <view class="lamp">
-          <view class="lamp-bulb"></view>
-          <view class="lamp-neck"></view>
-          <view class="lamp-base"></view>
-        </view>
+    <view class="light-item">
+      <view class="light-item-name">Reading Lights</view>
+      <view class="{{readSwitchClass}}" bind:tap="toggleReading">
+        <view class="io-thumb"></view>
+        <view class="io-off-lab">OFF</view>
+        <view class="io-on-lab">ON</view>
       </view>
-      <view class="power-label">Salt Lights</view>
-    </view>
-    <view class="power-col">
-      <view class="{{readingClass}}" bind:tap="toggleReading">
-        <view class="lamp">
-          <view class="lamp-bulb"></view>
-          <view class="lamp-neck"></view>
-          <view class="lamp-base"></view>
-        </view>
-      </view>
-      <view class="power-label">Reading Lights</view>
     </view>
   </view>
 
@@ -136,7 +136,6 @@
         class="led-orb"
         style="{{ledOrbStyle}}"
         catch:touchstart="onLedOrbTouch"
-        catch:tap="toggleLed"
       ></view>
     </view>
     <view class="{{ledMeterClass}}">

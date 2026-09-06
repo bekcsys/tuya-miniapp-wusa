@@ -1,5 +1,7 @@
 const MIN_F = 86;
 const MAX_F = 150;
+const GAUGE_ROOM_C = 28;
+const GAUGE_MAX_C = 66;
 const MIN_TIMER = 10;
 const MAX_TIMER = 90;
 const TIMER_INF = 91;
@@ -38,11 +40,63 @@ function toF(tempC) {
   return Math.round(tempC * 9 / 5 + 32);
 }
 
+function gaugeProgress(tempF) {
+  const tempC = clamp((tempF - 32) * 5 / 9, 0, GAUGE_MAX_C);
+  if (tempC <= GAUGE_ROOM_C) {
+    return tempC / GAUGE_ROOM_C / 3;
+  }
+  return 1 / 3 + (tempC - GAUGE_ROOM_C) / (GAUGE_MAX_C - GAUGE_ROOM_C) * 2 / 3;
+}
+
+function ringFillStyle(progress) {
+  const fill = Math.max(1, progress * 270);
+  return 'background: conic-gradient(from 225deg, #2b7cff 0deg, #e31b23 ' + fill + 'deg, #d8dee8 ' + fill + 'deg, #d8dee8 270deg, transparent 270deg, transparent 360deg);';
+}
+
 function formatTemp(tempF, unit) {
   if (unit === 'C') {
     return toC(tempF) + ' °C';
   }
   return Math.round(tempF) + ' °F';
+}
+
+function buildGaugeTicks() {
+  const ticks = [];
+  const count = 54;
+  for (let i = 0; i <= count; i++) {
+    const major = i % 9 === 0;
+    ticks.push({
+      key: 't' + i,
+      deg: ARC_START + (i / count) * 270,
+      tickClass: major ? 'g-tick g-tick-major' : 'g-tick',
+    });
+  }
+  return ticks;
+}
+
+function tempCFromProgress(progress) {
+  if (progress <= 1 / 3) {
+    return progress * 3 * GAUGE_ROOM_C;
+  }
+  return GAUGE_ROOM_C + (progress - 1 / 3) * 3 / 2 * (GAUGE_MAX_C - GAUGE_ROOM_C);
+}
+
+function buildGaugeMarks(unit) {
+  const steps = [0, 1 / 6, 1 / 3, 2 / 3, 1];
+  return steps.map(function (progress, index) {
+    const tempC = tempCFromProgress(progress);
+    const deg = ARC_START + progress * 270;
+    let label = unit === 'C' ? '' + Math.round(tempC) : '' + Math.round(tempC * 9 / 5 + 32);
+    if (progress === 1) {
+      label = unit === 'C' ? '66' : '150';
+    }
+    return {
+      key: 'n' + index,
+      deg: deg,
+      rot: -deg,
+      label: label,
+    };
+  });
 }
 
 function buildTempMarks(unit) {
@@ -200,13 +254,19 @@ Page({
     currentDisplay: '82 °F',
     targetDisplay: '150°F',
     gaugeTemp: '82',
+    targetNum: '150',
+    ringStyle: ringFillStyle(gaugeProgress(82)),
     knobDeg: ARC_START,
     targetKnobDeg: ARC_START + 270,
     tempMarks: buildTempMarks('F'),
+    gaugeTicks: buildGaugeTicks(),
+    gaugeMarks: buildGaugeMarks('F'),
     shutdownClass: 'shutdown-btn',
     shutdownLabel: 'Shut down sauna',
-    heaterClass: 'power-on',
-    heaterLabel: 'Heater on',
+    heaterClass: 'io-switch io-on',
+    heaterLabel: 'heater on',
+    tempDisabled: false,
+    tempBlockClass: 'adjust-block',
     unitMark: '°F',
     tempMin: 86,
     tempMax: 150,
@@ -219,7 +279,11 @@ Page({
     saltLights: false,
     readingClass: 'light-btn light-off',
     colorClass: 'light-btn light-on',
+    ledLabel: 'ON',
+    ledToggleClass: 'io-switch io-on',
     saltClass: 'light-btn light-off',
+    saltSwitchClass: 'io-switch io-off',
+    readSwitchClass: 'io-switch io-off',
     setDisabled: false,
     adjustPanelClass: 'adjust-panel',
     navTab: 'sauna',
@@ -313,7 +377,7 @@ Page({
     const cy = size / 2;
     const dist = Math.sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy));
     const ratio = dist / size;
-    if (ratio >= 0.3 && ratio <= 0.56) {
+    if (ratio >= 0.36 && ratio <= 0.54) {
       return 'temp';
     }
     return null;
@@ -434,7 +498,7 @@ Page({
     next.saunaOn = isFeatureOn(next);
     const isC = next.unit === 'C';
     const gaugeTemp = isC ? toC(next.currentTempF) : Math.round(next.currentTempF);
-    const currentProgress = (clamp(next.currentTempF, MIN_F, MAX_F) - MIN_F) / (MAX_F - MIN_F);
+    const currentProgress = gaugeProgress(next.currentTempF);
     const progress = (next.tempF - MIN_F) / (MAX_F - MIN_F);
     const timerLabel = next.timerMin >= TIMER_INF ? 'infinite' : next.timerMin + ' min';
     const led = hsvColor(next.hue, 100, next.val);
@@ -463,14 +527,17 @@ Page({
       ledSliderDisabled: !next.ledOn,
       currentDisplay: formatTemp(next.currentTempF, next.unit),
       targetDisplay: isC ? toC(next.tempF) + '°C' : next.tempF + '°F',
-      gaugeTemp: '' + gaugeTemp,
+      gaugeTemp: '' + (isC ? toC(next.currentTempF) : Math.round(next.currentTempF)),
+      targetNum: '' + (isC ? toC(next.tempF) : next.tempF),
+      ringStyle: ringFillStyle(currentProgress),
       knobDeg: ARC_START + currentProgress * 270,
       targetKnobDeg: ARC_START + progress * 270,
       tempMarks: buildTempMarks(next.unit),
+      gaugeMarks: buildGaugeMarks(next.unit),
       shutdownClass: next.saunaOn ? 'shutdown-btn' : 'shutdown-btn shutdown-btn-off',
       shutdownLabel: 'Shut down sauna',
-      heaterClass: next.heaterOn ? 'power-on' : 'power-off',
-      heaterLabel: next.heaterOn ? 'Heater on' : 'Heater off',
+      heaterClass: next.heaterOn ? 'io-switch io-on' : 'io-switch io-off',
+      heaterLabel: next.heaterOn ? 'heater on' : 'heater off',
       unitMark: isC ? '°C' : '°F',
       tempMin: isC ? toC(MIN_F) : MIN_F,
       tempMax: isC ? toC(MAX_F) : MAX_F,
@@ -483,8 +550,14 @@ Page({
       saltLights: next.saltLights,
       readingClass: next.readingLights ? 'light-btn light-on' : 'light-btn light-off',
       colorClass: next.ledOn ? 'light-btn light-on' : 'light-btn light-off',
+      ledLabel: next.ledOn ? 'ON' : 'OFF',
+      ledToggleClass: next.ledOn ? 'io-switch io-on' : 'io-switch io-off',
       saltClass: next.saltLights ? 'light-btn light-on' : 'light-btn light-off',
+      saltSwitchClass: next.saltLights ? 'io-switch io-on' : 'io-switch io-off',
+      readSwitchClass: next.readingLights ? 'io-switch io-on' : 'io-switch io-off',
       setDisabled: !next.saunaOn,
+      tempDisabled: !next.heaterOn,
+      tempBlockClass: next.heaterOn ? 'adjust-block' : 'adjust-block adjust-block-off',
       adjustPanelClass: next.saunaOn ? 'adjust-panel' : 'adjust-panel adjust-panel-off',
       hrBpm: health.hrBpm,
       hrStatus: health.hrStatus,
@@ -670,7 +743,7 @@ Page({
     this.apply({ unit: this.data.unit === 'F' ? 'C' : 'F' });
   },
   tempUp() {
-    if (!this.data.saunaOn) {
+    if (!this.data.heaterOn) {
       return;
     }
     if (this.data.unit === 'C') {
@@ -680,7 +753,7 @@ Page({
     this.apply({ tempF: clamp(this.data.tempF + 1, MIN_F, MAX_F) });
   },
   tempDown() {
-    if (!this.data.saunaOn) {
+    if (!this.data.heaterOn) {
       return;
     }
     if (this.data.unit === 'C') {
@@ -713,7 +786,7 @@ Page({
     this.apply({ timerMin: this.data.timerMin + 1 });
   },
   onTempSlide(e) {
-    if (!this.data.saunaOn) {
+    if (!this.data.heaterOn) {
       return;
     }
     const value = e.detail.value;
