@@ -60,6 +60,267 @@ function formatTemp(tempF, unit) {
   return Math.round(tempF) + ' °F';
 }
 
+function buildSchedDays(active) {
+  const labels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const on = active || [false, false, false, false, false, false, false];
+  return labels.map(function (label, index) {
+    return {
+      key: 'sd' + index,
+      label: label,
+      on: !!on[index],
+      dayClass: on[index] ? 'sched-day sched-day-on' : 'sched-day',
+    };
+  });
+}
+
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function pad2(value) {
+  return (value < 10 ? '0' : '') + value;
+}
+
+function timeToMin(value) {
+  if (!value || value.indexOf(':') < 0) {
+    return -1;
+  }
+  const parts = value.split(':');
+  const hours = parseInt(parts[0], 10);
+  const mins = parseInt(parts[1], 10);
+  if (isNaN(hours) || isNaN(mins)) {
+    return -1;
+  }
+  return hours * 60 + mins;
+}
+
+function shiftTime(hhmm, hourDelta, minDelta) {
+  let mins = timeToMin(hhmm);
+  if (mins < 0) {
+    mins = 0;
+  }
+  mins = mins + hourDelta * 60 + minDelta;
+  mins = ((mins % 1440) + 1440) % 1440;
+  return pad2(Math.floor(mins / 60)) + ':' + pad2(mins % 60);
+}
+
+function formatTime12(hhmm) {
+  const mins = timeToMin(hhmm);
+  const safe = mins < 0 ? 0 : mins;
+  const hour24 = Math.floor(safe / 60);
+  const min = pad2(safe % 60);
+  const period = hour24 >= 12 ? 'PM' : 'AM';
+  let hour12 = hour24 % 12;
+  if (hour12 === 0) {
+    hour12 = 12;
+  }
+  return {
+    hour12: '' + hour12,
+    min: min,
+    period: period,
+    clock: hour12 + ':' + min,
+    label: hour12 + ':' + min + ' ' + period,
+  };
+}
+
+function from12h(hour12, min, period) {
+  const hour = parseInt(hour12, 10);
+  const minute = parseInt(min, 10);
+  let hour24 = 0;
+  if (period === 'PM') {
+    hour24 = hour === 12 ? 12 : hour + 12;
+  } else {
+    hour24 = hour === 12 ? 0 : hour;
+  }
+  return pad2(hour24) + ':' + pad2(isNaN(minute) ? 0 : minute);
+}
+
+function buildTimeWheel(prefix, hhmm) {
+  const t = formatTime12(hhmm);
+  const hour = parseInt(t.hour12, 10);
+  const min = parseInt(t.min, 10);
+  const hours = [];
+  for (let i = 1; i <= 12; i++) {
+    hours.push({
+      key: prefix + 'h' + i,
+      id: prefix + 'h' + i,
+      label: '' + i,
+      value: '' + i,
+      itemClass: i === hour ? 'time-opt time-opt-on' : 'time-opt',
+    });
+  }
+  const mins = [];
+  for (let i = 0; i < 60; i++) {
+    mins.push({
+      key: prefix + 'm' + i,
+      id: prefix + 'm' + i,
+      label: pad2(i),
+      value: '' + i,
+      itemClass: i === min ? 'time-opt time-opt-on' : 'time-opt',
+    });
+  }
+  const periods = ['AM', 'PM'].map(function (period) {
+    return {
+      key: prefix + period,
+      id: prefix + period,
+      label: period,
+      value: period,
+      itemClass: period === t.period ? 'time-opt time-opt-on' : 'time-opt',
+    };
+  });
+  return {
+    hours: hours,
+    mins: mins,
+    periods: periods,
+    hourId: prefix + 'h' + hour,
+    minId: prefix + 'm' + min,
+    periodId: prefix + t.period,
+  };
+}
+
+function dayFlags(item) {
+  if (item.repeat === 'everyday' || item.repeat === 'once') {
+    return [true, true, true, true, true, true, true];
+  }
+  const days = item.days || [];
+  return [0, 1, 2, 3, 4, 5, 6].map(function (index) {
+    const day = days[index];
+    if (typeof day === 'boolean') {
+      return day;
+    }
+    return !!(day && day.on);
+  });
+}
+
+function schedulesOverlap(left, right) {
+  const leftOn = timeToMin(left.onTime);
+  const leftOff = timeToMin(left.offTime);
+  const rightOn = timeToMin(right.onTime);
+  const rightOff = timeToMin(right.offTime);
+  if (leftOn < 0 || leftOff < 0 || rightOn < 0 || rightOff < 0) {
+    return false;
+  }
+  if (!(leftOn <= rightOff && rightOn <= leftOff)) {
+    return false;
+  }
+  const leftDays = dayFlags(left);
+  const rightDays = dayFlags(right);
+  for (let i = 0; i < 7; i++) {
+    if (leftDays[i] && rightDays[i]) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function scheduleError(draft, list, editId) {
+  const on = timeToMin(draft.onTime);
+  const off = timeToMin(draft.offTime);
+  if (on < 0 || off < 0) {
+    return 'Set a turn on and turn off time.';
+  }
+  if (on === off) {
+    return 'Turn on and turn off cannot be the same time.';
+  }
+  if (off < on) {
+    return 'Turn off time must be after turn on time.';
+  }
+  if (draft.repeat === 'weekly') {
+    const any = dayFlags(draft).some(function (onDay) {
+      return onDay;
+    });
+    if (!any) {
+      return 'Choose at least one day.';
+    }
+  }
+  for (let i = 0; i < list.length; i++) {
+    if (list[i].id === editId) {
+      continue;
+    }
+    if (schedulesOverlap(draft, list[i])) {
+      return 'This overlaps another schedule on the same day and time.';
+    }
+  }
+  return '';
+}
+
+function repeatLabel(item) {
+  if (item.repeat === 'once') {
+    return 'Once';
+  }
+  if (item.repeat === 'everyday') {
+    return 'Every day';
+  }
+  const flags = dayFlags(item);
+  const names = [];
+  for (let i = 0; i < 7; i++) {
+    if (flags[i]) {
+      names.push(DAY_NAMES[i]);
+    }
+  }
+  return names.length ? names.join(', ') : 'Days';
+}
+
+function decorateSchedules(list, unit) {
+  return (list || []).map(function (item) {
+    const on = !!item.on;
+    return {
+      id: item.id,
+      on: on,
+      onTime: item.onTime,
+      offTime: item.offTime,
+      tempF: item.tempF,
+      repeat: item.repeat,
+      days: dayFlags(item).map(function (flag) {
+        return flag;
+      }),
+      timeLabel: formatTime12(item.onTime).label,
+      offLabel: formatTime12(item.offTime).label,
+      rangeLabel: formatTime12(item.onTime).label + ' – ' + formatTime12(item.offTime).label,
+      tempLabel: unit === 'C' ? toC(item.tempF) + '°C' : item.tempF + '°F',
+      repeatLabel: repeatLabel(item),
+      saltLights: !!item.saltLights,
+      ledOn: !!item.ledOn,
+      readingLights: !!item.readingLights,
+      hue: typeof item.hue === 'number' ? item.hue : 195,
+      val: 100,
+      detailLabel: [
+        repeatLabel(item),
+        'Heater ' + (unit === 'C' ? toC(item.tempF) + '°C' : item.tempF + '°F'),
+        item.saltLights ? 'Salt' : '',
+        item.ledOn ? 'Color' : '',
+        item.readingLights ? 'Reading' : '',
+      ].filter(function (name) { return name; }).join(' · '),
+      enableClass: on ? 'io-switch io-on sched-io' : 'io-switch io-off sched-io',
+    };
+  });
+}
+
+function plainSchedules(list) {
+  return (list || []).map(function (item) {
+    return {
+      id: item.id,
+      on: !!item.on,
+      onTime: item.onTime,
+      offTime: item.offTime,
+      tempF: item.tempF,
+      repeat: item.repeat,
+      days: dayFlags(item),
+      saltLights: !!item.saltLights,
+      ledOn: !!item.ledOn,
+      readingLights: !!item.readingLights,
+      hue: typeof item.hue === 'number' ? item.hue : 195,
+      val: 100,
+    };
+  });
+}
+
+function repeatClasses(repeat) {
+  return {
+    repeatOnceClass: repeat === 'once' ? 'sched-chip sched-chip-on' : 'sched-chip',
+    repeatEveryClass: repeat === 'everyday' ? 'sched-chip sched-chip-on' : 'sched-chip',
+    repeatWeeklyClass: repeat === 'weekly' ? 'sched-chip sched-chip-on' : 'sched-chip',
+  };
+}
+
 function buildGaugeTicks() {
   const ticks = [];
   const count = 54;
@@ -306,6 +567,46 @@ Page({
       { key: 't4', text: 'Step out if you feel dizzy or unwell.' },
     ],
     soundTabClass: 'tab-item',
+    scheduleTabClass: 'tab-item',
+    schedules: [],
+    schedEmpty: true,
+    draftOpen: false,
+    draftId: '',
+    draftEnabled: false,
+    draftTitle: 'New schedule',
+    draftOn: '07:00',
+    draftOff: '07:45',
+    draftOnLabel: '7:00 AM',
+    draftOffLabel: '7:45 AM',
+    draftSaltLights: false,
+    draftLedOn: false,
+    draftReadingLights: false,
+    draftHue: 195,
+    draftSaltClass: 'io-switch io-off',
+    draftLedClass: 'io-switch io-off',
+    draftReadClass: 'io-switch io-off',
+    timePopupOpen: false,
+    timePopupField: 'on',
+    timePopupTitle: 'Turn on time',
+    popupTime: '07:00',
+    popupLabel: '7:00 AM',
+    popupHours: [],
+    popupMins: [],
+    popupPeriods: [],
+    popupHourId: 'ph7',
+    popupMinId: 'pm0',
+    popupPeriodId: 'pAM',
+    draftTempF: 150,
+    draftTempSlider: 150,
+    draftTempLabel: '150°F',
+    draftRepeat: 'everyday',
+    draftDays: buildSchedDays(),
+    draftShowDays: false,
+    draftError: '',
+    draftSaveClass: 'sched-save',
+    repeatOnceClass: 'sched-chip',
+    repeatEveryClass: 'sched-chip sched-chip-on',
+    repeatWeeklyClass: 'sched-chip',
     toneHz: 528,
     toneName: 'Love',
     toneNote: 'Transformation',
@@ -314,6 +615,10 @@ Page({
     tonePlayClass: 'tone-play',
     toneVol: 80,
     toneList: buildToneList(528, false),
+    pageHeight: 667,
+    pageBodyHeight: 500,
+    tabbarHeight: 64,
+    safeBottom: 0,
   },
   onLoad(query) {
     const sys = typeof ty.getSystemInfoSync === 'function' ? ty.getSystemInfoSync() : null;
@@ -332,6 +637,7 @@ Page({
     });
     this.loadSessionRuns();
     this.hidePhoneStatusBar();
+    this.measureChrome();
   },
   onReady() {
     const sys = typeof ty.getSystemInfoSync === 'function' ? ty.getSystemInfoSync() : null;
@@ -340,16 +646,53 @@ Page({
     this.spectrumSize = (360 / 750) * width;
     this.measureSpectrum();
     this.initAudio();
+    this.measureChrome();
+  },
+  measureChrome(size) {
+    const sys = typeof ty.getSystemInfoSync === 'function' ? ty.getSystemInfoSync() : null;
+    const width = (size && size.windowWidth) || (sys && sys.windowWidth) || 375;
+    const windowHeight = (size && size.windowHeight) || (sys && sys.windowHeight) || 667;
+    const screenHeight = (sys && sys.screenHeight) || windowHeight;
+    const height = Math.min(windowHeight, screenHeight);
+    const rpx = width / 750;
+    let safeBottom = 0;
+    if (sys && sys.safeAreaInsets && typeof sys.safeAreaInsets.bottom === 'number') {
+      safeBottom = sys.safeAreaInsets.bottom;
+    } else if (sys && sys.safeArea && typeof sys.safeArea.bottom === 'number') {
+      safeBottom = Math.max(0, screenHeight - sys.safeArea.bottom);
+    }
+    if (safeBottom > 48) {
+      safeBottom = 34;
+    }
+    const topH = (this.data.statusBarHeight || 0) + Math.round(88 * rpx);
+    const tabbarHeight = Math.round(112 * rpx) + safeBottom;
+    const pageBodyHeight = Math.max(180, height - topH - tabbarHeight);
+    this.setData({
+      pageHeight: height,
+      pageBodyHeight: pageBodyHeight,
+      tabbarHeight: tabbarHeight,
+      safeBottom: safeBottom,
+    });
+  },
+  onResize(e) {
+    const size = e && e.size ? e.size : null;
+    this.measureChrome(size);
   },
   onShow() {
     this.measureSpectrum();
     this.hidePhoneStatusBar();
+    this.measureChrome();
+    this.startScheduleClock();
   },
   onHide() {
     this.stopTone();
   },
   onUnload() {
     this.stopTone();
+    if (this.scheduleTimer) {
+      clearInterval(this.scheduleTimer);
+      this.scheduleTimer = null;
+    }
     if (this.audio && typeof this.audio.destroy === 'function') {
       this.audio.destroy();
       this.audio = null;
@@ -483,9 +826,7 @@ Page({
     if (typeof patch.hue === 'number') {
       next.hue = ((patch.hue % 360) + 360) % 360;
     }
-    if (typeof patch.val === 'number') {
-      next.val = clamp(patch.val, 0, 100);
-    }
+    next.val = 100;
     if (typeof patch.ledOn === 'boolean') {
       next.ledOn = patch.ledOn;
     }
@@ -569,6 +910,9 @@ Page({
       sessionRuns: next.sessionRuns,
       hydration: health.hydration,
       weekBars: health.weekBars,
+      schedules: decorateSchedules(this.data.schedules, next.unit),
+      draftTempSlider: isC ? toC(this.data.draftTempF || next.tempF) : (this.data.draftTempF || next.tempF),
+      draftTempLabel: formatTemp(this.data.draftTempF || next.tempF, next.unit).replace(' ', ''),
     });
     saveState({
       tempF: next.tempF,
@@ -580,18 +924,22 @@ Page({
       val: next.val,
       ledOn: next.ledOn,
       sessionRuns: next.sessionRuns,
+      schedules: plainSchedules(this.data.schedules),
     });
   },
   hidePhoneStatusBar() {
     const self = this;
-    if (typeof ty.hideStatusBar !== 'function') {
-      return;
+    if (typeof ty.hideStatusBar === 'function') {
+      ty.hideStatusBar({
+        success: function () {
+          self.setData({ statusBarHeight: 0 });
+          self.measureChrome();
+        },
+      });
     }
-    ty.hideStatusBar({
-      success: function () {
-        self.setData({ statusBarHeight: 0 });
-      },
-    });
+    if (typeof ty.hideMenuButton === 'function') {
+      ty.hideMenuButton();
+    }
   },
   loadSessionRuns() {
     const self = this;
@@ -603,17 +951,42 @@ Page({
           if (saved && typeof saved.sessionRuns === 'number') {
             self.apply({ sessionRuns: saved.sessionRuns });
           }
+          if (saved && saved.schedules && saved.schedules.length) {
+            const schedules = decorateSchedules(saved.schedules, self.data.unit);
+            self.setData({
+              schedules: schedules,
+              schedEmpty: schedules.length === 0,
+            });
+            self.tickSchedules();
+          }
         },
       });
     }
   },
   goHome() {
+    if (this.data.timePopupOpen) {
+      this.setData({ timePopupOpen: false });
+      return;
+    }
+    if (this.data.navTab !== 'sauna') {
+      this.setData({
+        navTab: 'sauna',
+        saunaTabClass: 'tab-item tab-on',
+        healthTabClass: 'tab-item',
+        soundTabClass: 'tab-item',
+        scheduleTabClass: 'tab-item',
+        draftOpen: false,
+        draftError: '',
+      });
+      return;
+    }
     if (typeof ty.navigateBack === 'function') {
       ty.navigateBack();
     }
   },
   selectNav(e) {
-    const tab = e.currentTarget.dataset.tab;
+    const ds = (e.currentTarget && e.currentTarget.dataset) || {};
+    const tab = ds.tab || ds.Tab;
     if (!tab || tab === this.data.navTab) {
       return;
     }
@@ -622,7 +995,382 @@ Page({
       saunaTabClass: tab === 'sauna' ? 'tab-item tab-on' : 'tab-item',
       healthTabClass: tab === 'health' ? 'tab-item tab-on' : 'tab-item',
       soundTabClass: tab === 'sound' ? 'tab-item tab-on' : 'tab-item',
+      scheduleTabClass: tab === 'schedule' ? 'tab-item tab-on' : 'tab-item',
     });
+  },
+  persistSchedules() {
+    saveState({
+      tempF: this.data.tempF,
+      unit: this.data.unit,
+      timerMin: this.data.timerMin,
+      saunaOn: this.data.saunaOn,
+      heaterOn: this.data.heaterOn,
+      hue: this.data.hue,
+      val: this.data.val,
+      ledOn: this.data.ledOn,
+      sessionRuns: this.data.sessionRuns,
+      schedules: plainSchedules(this.data.schedules),
+    });
+  },
+  showSchedNote(title) {
+    if (typeof ty.showToast === 'function') {
+      ty.showToast({ title: title, icon: 'none', duration: 2500 });
+    }
+  },
+  draftState(patch) {
+    const onTime = patch.onTime || this.data.draftOn;
+    const offTime = patch.offTime || this.data.draftOff;
+    const tempF = typeof patch.tempF === 'number' ? patch.tempF : this.data.draftTempF;
+    const repeat = patch.repeat || this.data.draftRepeat;
+    const days = patch.days || this.data.draftDays;
+    const editId = Object.prototype.hasOwnProperty.call(patch, 'editId') ? patch.editId : this.data.draftId;
+    const on = Object.prototype.hasOwnProperty.call(patch, 'on') ? !!patch.on : !!this.data.draftEnabled;
+    const draft = {
+      on: on,
+      onTime: onTime,
+      offTime: offTime,
+      tempF: tempF,
+      repeat: repeat,
+      days: days,
+    };
+    const error = scheduleError(draft, this.data.schedules, editId);
+    const saltLights = Object.prototype.hasOwnProperty.call(patch, 'saltLights') ? !!patch.saltLights : !!this.data.draftSaltLights;
+    const ledOn = Object.prototype.hasOwnProperty.call(patch, 'ledOn') ? !!patch.ledOn : !!this.data.draftLedOn;
+    const readingLights = Object.prototype.hasOwnProperty.call(patch, 'readingLights') ? !!patch.readingLights : !!this.data.draftReadingLights;
+    const hue = typeof patch.hue === 'number' ? patch.hue : (typeof this.data.draftHue === 'number' ? this.data.draftHue : 195);
+    const chips = repeatClasses(repeat);
+    return {
+      draftOn: onTime,
+      draftOff: offTime,
+      draftOnLabel: formatTime12(onTime).label,
+      draftOffLabel: formatTime12(offTime).label,
+      draftTempF: tempF,
+      draftTempSlider: this.data.unit === 'C' ? toC(tempF) : tempF,
+      draftTempLabel: this.data.unit === 'C' ? toC(tempF) + '°C' : tempF + '°F',
+      draftRepeat: repeat,
+      draftDays: days,
+      draftShowDays: repeat === 'weekly',
+      draftSaltLights: saltLights,
+      draftLedOn: ledOn,
+      draftReadingLights: readingLights,
+      draftHue: hue,
+      draftSaltClass: saltLights ? 'io-switch io-on' : 'io-switch io-off',
+      draftLedClass: ledOn ? 'io-switch io-on' : 'io-switch io-off',
+      draftReadClass: readingLights ? 'io-switch io-on' : 'io-switch io-off',
+      draftError: error,
+      draftSaveClass: error ? 'sched-save sched-save-off' : 'sched-save',
+      repeatOnceClass: chips.repeatOnceClass,
+      repeatEveryClass: chips.repeatEveryClass,
+      repeatWeeklyClass: chips.repeatWeeklyClass,
+    };
+  },
+  openDraft(item) {
+    const tempF = item ? item.tempF : this.data.tempF;
+    const repeat = item ? item.repeat : 'everyday';
+    const days = buildSchedDays(item && item.days ? item.days : []);
+    const view = this.draftState({
+      onTime: item ? item.onTime : '07:00',
+      offTime: item ? item.offTime : '07:45',
+      tempF: tempF,
+      repeat: repeat,
+      days: days,
+      editId: item ? item.id : '',
+      saltLights: item ? !!item.saltLights : this.data.saltLights,
+      ledOn: item ? !!item.ledOn : this.data.ledOn,
+      readingLights: item ? !!item.readingLights : this.data.readingLights,
+      hue: item && typeof item.hue === 'number' ? item.hue : this.data.hue,
+      val: 100,
+    });
+    this.setData(Object.assign({
+      draftOpen: true,
+      draftId: item ? item.id : '',
+      draftEnabled: item ? !!item.on : false,
+      draftTitle: item ? 'Edit schedule' : 'New schedule',
+      navTab: 'schedule',
+      saunaTabClass: 'tab-item',
+      healthTabClass: 'tab-item',
+      soundTabClass: 'tab-item',
+      scheduleTabClass: 'tab-item tab-on',
+    }, view));
+  },
+  addSchedule() {
+    this.openDraft(null);
+  },
+  editSchedule(e) {
+    const ds = (e.currentTarget && e.currentTarget.dataset) || {};
+    const id = ds.id || ds.Id;
+    const item = this.data.schedules.filter(function (row) {
+      return row.id === id;
+    })[0];
+    if (item) {
+      this.openDraft(item);
+    }
+  },
+  cancelDraft() {
+    this.setData({
+      draftOpen: false,
+      draftError: '',
+      timePopupOpen: false,
+    });
+  },
+  noopTimeSheet() {},
+  popupWheel(hhmm) {
+    const t = formatTime12(hhmm);
+    const wheel = buildTimeWheel('p', hhmm);
+    return {
+      popupTime: hhmm,
+      popupLabel: t.label,
+      popupHours: wheel.hours,
+      popupMins: wheel.mins,
+      popupPeriods: wheel.periods,
+      popupHourId: wheel.hourId,
+      popupMinId: wheel.minId,
+      popupPeriodId: wheel.periodId,
+    };
+  },
+  openTimePopup(e) {
+    const ds = (e.currentTarget && e.currentTarget.dataset) || {};
+    const field = ds.field || ds.Field || 'on';
+    const hhmm = field === 'off' ? this.data.draftOff : this.data.draftOn;
+    this.setData(Object.assign({
+      timePopupOpen: true,
+      timePopupField: field,
+      timePopupTitle: field === 'off' ? 'Turn off time' : 'Turn on time',
+    }, this.popupWheel(hhmm)));
+  },
+  closeTimePopup() {
+    this.setData({ timePopupOpen: false });
+  },
+  setPopupTimePart(e) {
+    const ds = (e.currentTarget && e.currentTarget.dataset) || {};
+    const part = ds.part || ds.Part;
+    const value = ds.value;
+    if (value === undefined || value === '') {
+      return;
+    }
+    const t = formatTime12(this.data.popupTime);
+    let hour12 = t.hour12;
+    let min = t.min;
+    let period = t.period;
+    if (part === 'hour') {
+      hour12 = value;
+    } else if (part === 'min') {
+      min = value;
+    } else if (part === 'period') {
+      period = value;
+    } else {
+      return;
+    }
+    const hhmm = from12h(hour12, min, period);
+    const field = this.data.timePopupField === 'off' ? 'offTime' : 'onTime';
+    const patch = {};
+    patch[field] = hhmm;
+    this.setData(Object.assign(this.draftState(patch), this.popupWheel(hhmm), {
+      timePopupOpen: true,
+    }));
+  },
+  onDraftTemp(e) {
+    const value = e.detail.value;
+    const tempF = this.data.unit === 'C' ? toF(value) : value;
+    this.setData(this.draftState({ tempF: clamp(tempF, MIN_F, MAX_F) }));
+  },
+  setDraftRepeat(e) {
+    const ds = (e.currentTarget && e.currentTarget.dataset) || {};
+    const repeat = ds.repeat || ds.Repeat;
+    if (!repeat) {
+      return;
+    }
+    this.setData(this.draftState({ repeat: repeat }));
+  },
+  toggleDraftDay(e) {
+    const index = parseInt(e.currentTarget.dataset.index, 10);
+    const days = this.data.draftDays.map(function (day, i) {
+      const on = i === index ? !day.on : day.on;
+      return {
+        key: day.key,
+        label: day.label,
+        on: on,
+        dayClass: on ? 'sched-day sched-day-on' : 'sched-day',
+      };
+    });
+    this.setData(this.draftState({ days: days }));
+  },
+  saveDraft() {
+    const view = this.draftState({});
+    if (view.draftError) {
+      this.setData(view);
+      this.showSchedNote(view.draftError);
+      return;
+    }
+    const id = this.data.draftId || ('s' + Date.now());
+    let list = this.data.schedules.slice();
+    let index = -1;
+    for (let i = 0; i < list.length; i++) {
+      if (list[i].id === id) {
+        index = i;
+        break;
+      }
+    }
+    const nextItem = {
+      id: id,
+      on: index >= 0 ? !!list[index].on : false,
+      onTime: view.draftOn,
+      offTime: view.draftOff,
+      tempF: view.draftTempF,
+      repeat: view.draftRepeat,
+      days: dayFlags({ repeat: view.draftRepeat, days: view.draftDays }),
+      saltLights: !!this.data.draftSaltLights,
+      ledOn: !!this.data.draftLedOn,
+      readingLights: !!this.data.draftReadingLights,
+      hue: this.data.draftHue,
+      val: 100,
+    };
+    if (index >= 0) {
+      list[index] = nextItem;
+    } else {
+      list.push(nextItem);
+    }
+    const schedules = decorateSchedules(list, this.data.unit);
+    this.setData({
+      schedules: schedules,
+      schedEmpty: schedules.length === 0,
+      draftOpen: false,
+      draftError: '',
+    });
+    this.persistSchedules();
+  },
+  deleteSchedule(e) {
+    const ds = (e.currentTarget && e.currentTarget.dataset) || {};
+    const id = ds.id || ds.Id;
+    const schedules = decorateSchedules(this.data.schedules.filter(function (row) {
+      return row.id !== id;
+    }), this.data.unit);
+    this.setData({
+      schedules: schedules,
+      schedEmpty: schedules.length === 0,
+      draftOpen: this.data.draftId === id ? false : this.data.draftOpen,
+    });
+    this.persistSchedules();
+  },
+  toggleSchedule(e) {
+    const ds = (e.currentTarget && e.currentTarget.dataset) || {};
+    const id = ds.id || ds.Id;
+    const list = this.data.schedules.slice();
+    let target = null;
+    for (let i = 0; i < list.length; i++) {
+      if (list[i].id === id) {
+        target = list[i];
+        break;
+      }
+    }
+    if (!target) {
+      return;
+    }
+    const nextOn = !target.on;
+    if (nextOn) {
+      const error = scheduleError({
+        on: true,
+        onTime: target.onTime,
+        offTime: target.offTime,
+        tempF: target.tempF,
+        repeat: target.repeat,
+        days: target.days,
+      }, list, target.id);
+      if (error) {
+        this.showSchedNote(error);
+        return;
+      }
+    }
+    target.on = nextOn;
+    const schedules = decorateSchedules(list, this.data.unit);
+    this.setData({
+      schedules: schedules,
+      schedEmpty: schedules.length === 0,
+    });
+    this.persistSchedules();
+    if (nextOn) {
+      this.tickSchedules();
+    }
+  },
+  toggleDraftLight(e) {
+    const ds = (e.currentTarget && e.currentTarget.dataset) || {};
+    const light = ds.light || ds.Light;
+    if (light === 'salt') {
+      this.setData(this.draftState({ saltLights: !this.data.draftSaltLights }));
+      return;
+    }
+    if (light === 'led') {
+      this.setData(this.draftState({ ledOn: !this.data.draftLedOn }));
+      return;
+    }
+    if (light === 'read') {
+      this.setData(this.draftState({ readingLights: !this.data.draftReadingLights }));
+    }
+  },
+  applyScheduleOn(item) {
+    this.apply({
+      heaterOn: true,
+      tempF: typeof item.tempF === 'number' ? item.tempF : this.data.tempF,
+      saltLights: !!item.saltLights,
+      ledOn: !!item.ledOn,
+      readingLights: !!item.readingLights,
+      hue: typeof item.hue === 'number' ? item.hue : this.data.hue,
+      val: 100,
+    });
+  },
+  applyScheduleOff(item) {
+    this.apply({ shutdown: true });
+    if (item && item.repeat === 'once' && item.on) {
+      item.on = false;
+      const schedules = decorateSchedules(this.data.schedules, this.data.unit);
+      this.setData({
+        schedules: schedules,
+        schedEmpty: schedules.length === 0,
+      });
+      this.persistSchedules();
+    }
+  },
+  tickSchedules() {
+    const list = this.data.schedules || [];
+    const now = new Date();
+    const mins = now.getHours() * 60 + now.getMinutes();
+    const day = now.getDay();
+    const dateKey = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      if (!item.on) {
+        continue;
+      }
+      if (item.repeat !== 'once' && !dayFlags(item)[day]) {
+        continue;
+      }
+      const onM = timeToMin(item.onTime);
+      const offM = timeToMin(item.offTime);
+      if (onM < 0 || offM < 0 || offM <= onM) {
+        continue;
+      }
+      const onStamp = item.id + '-on-' + dateKey;
+      const offStamp = item.id + '-off-' + dateKey;
+      if (mins >= onM && mins < offM) {
+        if (this._schedStamp !== onStamp) {
+          this._schedStamp = onStamp;
+          this.applyScheduleOn(item);
+        }
+      } else if (mins >= offM && this._schedStamp === onStamp) {
+        this._schedStamp = offStamp;
+        this.applyScheduleOff(item);
+      }
+    }
+  },
+  startScheduleClock() {
+    this.tickSchedules();
+    if (this.scheduleTimer) {
+      return;
+    }
+    const self = this;
+    this.scheduleTimer = setInterval(function () {
+      self.tickSchedules();
+    }, 15000);
   },
   initAudio(onReady) {
     if (this.audio) {
@@ -763,7 +1511,7 @@ Page({
     this.apply({ tempF: clamp(this.data.tempF - 1, MIN_F, MAX_F) });
   },
   timerDown() {
-    if (!this.data.saunaOn) {
+    if (!this.data.heaterOn) {
       return;
     }
     if (this.data.timerMin >= TIMER_INF) {
@@ -773,7 +1521,7 @@ Page({
     this.apply({ timerMin: this.data.timerMin - 1 });
   },
   timerUp() {
-    if (!this.data.saunaOn) {
+    if (!this.data.heaterOn) {
       return;
     }
     if (this.data.timerMin >= TIMER_INF) {
@@ -795,7 +1543,7 @@ Page({
     });
   },
   onTimerSlide(e) {
-    if (!this.data.saunaOn) {
+    if (!this.data.heaterOn) {
       return;
     }
     const value = e.detail.value;
@@ -877,12 +1625,6 @@ Page({
   },
   onHueEnd() {
     this.hueDragging = false;
-  },
-  onValSlide(e) {
-    if (!this.data.ledOn) {
-      return;
-    }
-    this.apply({ val: e.detail.value });
   },
   onLedOrbTouch() {
     this.hueDragging = false;

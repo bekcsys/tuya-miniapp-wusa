@@ -1,4 +1,4 @@
-<view class="page">
+<view class="page" style="height: {{pageHeight}}px;">
   <view class="topbar" style="padding-top: {{statusBarHeight}}px;">
     <view class="topbar-row">
       <view class="top-btn" bind:tap="goHome">
@@ -9,6 +9,7 @@
     </view>
   </view>
 
+  <scroll-view scroll-y="{{true}}" class="page-body" style="height: {{pageBodyHeight}}px;">
   <view wx:if="{{navTab === 'sauna'}}">
   <view class="gauge-wrap">
     <view class="gauge">
@@ -69,7 +70,7 @@
           bind:change="onTempSlide"
         />
       </view>
-      <view class="adjust-block">
+      <view class="{{tempBlockClass}}">
         <view class="adjust-head">
           <view class="adjust-name">Adjust session timer</view>
           <view class="{{timerCapClass}}">{{timerLabel}}</view>
@@ -82,7 +83,7 @@
           activeColor="#7ec8e3"
           backgroundColor="#1a3a52"
           block-size="28"
-          disabled="{{setDisabled}}"
+          disabled="{{tempDisabled}}"
           bind:changing="onTimerSlide"
           bind:change="onTimerSlide"
         />
@@ -138,27 +139,12 @@
         catch:touchstart="onLedOrbTouch"
       ></view>
     </view>
-    <view class="{{ledMeterClass}}">
-      <view class="led-meter-name">Brightness</view>
-      <slider
-        min="0"
-        max="100"
-        step="1"
-        value="{{val}}"
-        disabled="{{ledSliderDisabled}}"
-        activeColor="{{ledHex}}"
-        backgroundColor="#1a3a52"
-        block-size="24"
-        bind:changing="onValSlide"
-        bind:change="onValSlide"
-      />
-    </view>
   </view>
 
   <view class="{{shutdownClass}}" bind:tap="toggleSauna">{{shutdownLabel}}</view>
   </view>
 
-  <view wx:elif="{{navTab === 'health'}}" class="health">
+  <view wx:if="{{navTab === 'health'}}" class="health">
     <view class="health-hero">
       <view class="heart heart-lg">
         <view class="heart-l"></view>
@@ -192,7 +178,117 @@
     </view>
   </view>
 
-  <view wx:elif="{{navTab === 'sound'}}" class="sound">
+  <view wx:if="{{navTab === 'schedule'}}" class="schedule">
+    <view class="sound-title">Schedule sauna</view>
+    <view wx:if="{{schedEmpty}}" class="health-panel">
+      <view class="health-note">No schedules yet.</view>
+    </view>
+    <view
+      wx:for="{{schedules}}"
+      wx:key="id"
+      class="sched-card"
+      data-id="{{item.id}}"
+      bind:tap="editSchedule"
+    >
+      <view class="sched-card-main">
+        <view class="sched-card-time">{{item.rangeLabel}}</view>
+        <view class="sched-card-sub">
+          <view class="sched-card-tiny">{{item.detailLabel}}</view>
+          <view class="sched-enable" data-id="{{item.id}}" catch:tap="toggleSchedule">
+            <view class="sched-enable-lab">Enable</view>
+            <view class="{{item.enableClass}}">
+              <view class="io-thumb"></view>
+              <view class="io-off-lab">OFF</view>
+              <view class="io-on-lab">ON</view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view wx:if="{{!draftOpen}}" class="sched-add" bind:tap="addSchedule">Add schedule</view>
+    <view wx:if="{{draftOpen}}" class="health-panel">
+      <view class="sched-draft-title">{{draftTitle}}</view>
+      <view class="sched-section sched-section-rule">
+        <view class="sched-times">
+          <view class="sched-time-col" data-field="on" bind:tap="openTimePopup">
+            <view class="sched-time-lab">Turn on</view>
+            <view class="sched-time-inline sched-time-on">{{draftOnLabel}}</view>
+          </view>
+          <view class="sched-time-col" data-field="off" bind:tap="openTimePopup">
+            <view class="sched-time-lab">Turn off</view>
+            <view class="sched-time-inline sched-time-off">{{draftOffLabel}}</view>
+          </view>
+        </view>
+      </view>
+      <view class="sched-section sched-section-rule">
+        <view class="health-panel-title">Repeat pattern</view>
+        <view class="sched-repeats">
+          <view class="{{repeatOnceClass}}" data-repeat="once" bind:tap="setDraftRepeat">Once</view>
+          <view class="{{repeatEveryClass}}" data-repeat="everyday" bind:tap="setDraftRepeat">Daily</view>
+          <view class="{{repeatWeeklyClass}}" data-repeat="weekly" bind:tap="setDraftRepeat">Days</view>
+        </view>
+        <view wx:if="{{draftShowDays}}" class="sched-days">
+          <view
+            wx:for="{{draftDays}}"
+            wx:key="key"
+            class="{{item.dayClass}}"
+            data-index="{{index}}"
+            bind:tap="toggleDraftDay"
+          >{{item.label}}</view>
+        </view>
+      </view>
+      <view class="sched-section">
+        <view class="health-panel-title">Sauna settings</view>
+        <view class="adjust-head">
+          <view class="adjust-name">Heater temperature</view>
+          <view class="adj-value">{{draftTempLabel}}</view>
+        </view>
+        <slider
+          min="{{tempMin}}"
+          max="{{tempMax}}"
+          step="1"
+          value="{{draftTempSlider}}"
+          activeColor="#e31b23"
+          backgroundColor="#1a3a52"
+          block-size="28"
+          bind:changing="onDraftTemp"
+          bind:change="onDraftTemp"
+        />
+        <view class="sched-line sched-gap">
+          <view class="light-item-name">Color Lights</view>
+          <view class="{{draftLedClass}}" data-light="led" bind:tap="toggleDraftLight">
+            <view class="io-thumb"></view>
+            <view class="io-off-lab">OFF</view>
+            <view class="io-on-lab">ON</view>
+          </view>
+        </view>
+        <view class="sched-line sched-gap">
+          <view class="light-item-name">Reading Lights</view>
+          <view class="{{draftReadClass}}" data-light="read" bind:tap="toggleDraftLight">
+            <view class="io-thumb"></view>
+            <view class="io-off-lab">OFF</view>
+            <view class="io-on-lab">ON</view>
+          </view>
+        </view>
+        <view class="sched-line sched-gap">
+          <view class="light-item-name">Salt Lights</view>
+          <view class="{{draftSaltClass}}" data-light="salt" bind:tap="toggleDraftLight">
+            <view class="io-thumb"></view>
+            <view class="io-off-lab">OFF</view>
+            <view class="io-on-lab">ON</view>
+          </view>
+        </view>
+      </view>
+      <view wx:if="{{draftError}}" class="sched-error">{{draftError}}</view>
+      <view class="sched-actions">
+        <view class="sched-cancel" bind:tap="cancelDraft">Cancel</view>
+        <view wx:if="{{draftId}}" class="sched-del-btn" data-id="{{draftId}}" bind:tap="deleteSchedule">Remove</view>
+        <view class="{{draftSaveClass}}" bind:tap="saveDraft">Save</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{navTab === 'sound'}}" class="sound">
     <view class="sound-title">Solfeggio Frequencies</view>
     <view class="sound-hero">
       <text class="sound-hz">{{toneHz}}</text>
@@ -229,11 +325,18 @@
       </view>
     </view>
   </view>
+  </scroll-view>
 
-  <view class="tabbar">
+  <view class="tabbar" style="height: {{tabbarHeight}}px; padding-bottom: {{safeBottom}}px;">
     <view class="{{saunaTabClass}}" data-tab="sauna" bind:tap="selectNav">
       <view class="tab-ring"></view>
       <text class="tab-text">Sauna</text>
+    </view>
+    <view class="{{scheduleTabClass}}" data-tab="schedule" bind:tap="selectNav">
+      <view class="tab-clock">
+        <view class="tab-clock-hand"></view>
+      </view>
+      <text class="tab-text">Schedule</text>
     </view>
     <view class="{{healthTabClass}}" data-tab="health" bind:tap="selectNav">
       <view class="heart heart-tab">
@@ -249,6 +352,49 @@
         <view class="tone-bar tone-bar-c"></view>
       </view>
       <text class="tab-text">Sound</text>
+    </view>
+  </view>
+
+  <view wx:if="{{timePopupOpen}}" class="time-mask" catch:tap="noopTimeSheet">
+    <view class="time-dialog" catch:tap="noopTimeSheet">
+      <view class="time-sheet-title">{{timePopupTitle}}</view>
+      <view class="time-sheet-value">{{popupLabel}}</view>
+      <view class="time-wheel">
+        <scroll-view scroll-y="{{true}}" class="time-col" scroll-into-view="{{popupHourId}}">
+          <view
+            wx:for="{{popupHours}}"
+            wx:key="key"
+            id="{{item.id}}"
+            class="{{item.itemClass}}"
+            data-part="hour"
+            data-value="{{item.value}}"
+            bind:tap="setPopupTimePart"
+          >{{item.label}}</view>
+        </scroll-view>
+        <scroll-view scroll-y="{{true}}" class="time-col" scroll-into-view="{{popupMinId}}">
+          <view
+            wx:for="{{popupMins}}"
+            wx:key="key"
+            id="{{item.id}}"
+            class="{{item.itemClass}}"
+            data-part="min"
+            data-value="{{item.value}}"
+            bind:tap="setPopupTimePart"
+          >{{item.label}}</view>
+        </scroll-view>
+        <scroll-view scroll-y="{{true}}" class="time-col" scroll-into-view="{{popupPeriodId}}">
+          <view
+            wx:for="{{popupPeriods}}"
+            wx:key="key"
+            id="{{item.id}}"
+            class="{{item.itemClass}}"
+            data-part="period"
+            data-value="{{item.value}}"
+            bind:tap="setPopupTimePart"
+          >{{item.label}}</view>
+        </scroll-view>
+      </view>
+      <view class="time-dialog-confirm" catch:tap="closeTimePopup">Confirm</view>
     </view>
   </view>
 </view>

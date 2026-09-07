@@ -1,9 +1,24 @@
 .page {
-  min-height: 100vh;
-  padding: 0 28rpx 180rpx;
+  position: relative;
+  width: 100%;
+  padding: 0;
   box-sizing: border-box;
   background-color: #0b2744;
   color: #ffffff;
+  overflow: hidden;
+}
+
+.topbar {
+  padding-left: 28rpx;
+  padding-right: 28rpx;
+  box-sizing: border-box;
+}
+
+.page-body {
+  width: 100%;
+  box-sizing: border-box;
+  padding-left: 28rpx;
+  padding-right: 28rpx;
 }
 
 .topbar-row {
@@ -576,22 +591,20 @@
 }
 
 .tabbar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 112rpx;
-  padding-bottom: env(safe-area-inset-bottom);
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
   background-color: #071c33;
-  border-top: 1rpx solid rgba(255, 255, 255, 0.08);
+  border-top: 2rpx solid rgba(255, 255, 255, 0.22);
   display: flex;
   flex-direction: row;
-  z-index: 20;
+  align-items: flex-start;
 }
 
 .tab-item {
   flex: 1;
   height: 112rpx;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -612,8 +625,412 @@
   box-sizing: border-box;
 }
 
-.tab-text {
+.tab-clock {
+  width: 28rpx;
+  height: 28rpx;
+  margin-bottom: 8rpx;
+  border: 3rpx solid currentColor;
+  border-radius: 50%;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.tab-clock-hand {
+  position: absolute;
+  left: 11rpx;
+  top: 4rpx;
+  width: 3rpx;
+  height: 10rpx;
+  background-color: currentColor;
+}
+
+.schedule {
+  padding-top: 8rpx;
+}
+
+.sched-head {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sched-head .health-panel-title {
+  margin-bottom: 0;
+}
+
+.sched-time {
+  font-size: 48rpx;
+  font-weight: 600;
+  text-align: center;
+}
+
+.sched-days {
+  margin-top: 24rpx;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.sched-day {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 28rpx;
+  flex-shrink: 0;
+  background-color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 20rpx;
+  font-weight: 600;
+}
+
+.sched-day-on {
+  background-color: #34c759;
+  color: #ffffff;
+}
+
+.sched-card {
+  margin-bottom: 16rpx;
+  padding: 24rpx;
+  border-radius: 28rpx;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.sched-card-main {
+  width: 100%;
+}
+
+.sched-line .io-switch {
+  margin-left: 16rpx;
+  flex-shrink: 0;
+}
+
+.sched-line .sched-card-time {
+  flex: 1;
+  text-align: right;
+  margin-right: 16rpx;
+}
+
+.sched-line {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sched-line .health-panel-title {
+  margin-bottom: 0;
+}
+
+.sched-card-lab {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.sched-card-time {
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.sched-card-sub {
+  margin-top: 8rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sched-card-tiny {
+  flex: 1;
+  margin-right: 16rpx;
+  font-size: 20rpx;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.sched-enable {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.sched-enable-lab {
+  margin-right: 10rpx;
+  font-size: 20rpx;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.sched-io {
+  flex-shrink: 0;
+  width: 120rpx;
+  height: 48rpx;
+  padding: 4rpx;
+  border-width: 3rpx;
+  border-radius: 24rpx;
+}
+
+.sched-io .io-thumb {
+  top: 4rpx;
+  width: 52rpx;
+  height: 32rpx;
+  border-radius: 16rpx;
+}
+
+.sched-io.io-on .io-thumb {
+  right: 4rpx;
+}
+
+.sched-io.io-off .io-thumb {
+  left: 4rpx;
+}
+
+.sched-io .io-on-lab,
+.sched-io .io-off-lab {
+  font-size: 18rpx;
+}
+
+.sched-times {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.sched-time-col {
+  flex: 1;
+}
+
+.sched-time-lab {
+  margin-bottom: 8rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.sched-time-inline {
+  font-size: 36rpx;
+  font-weight: 600;
+}
+
+.sched-time-on {
+  color: #34c759;
+}
+
+.sched-time-off {
+  color: #e31b23;
+}
+
+.time-mask {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 200;
+  background-color: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx;
+  box-sizing: border-box;
+}
+
+.time-dialog {
+  width: 100%;
+  max-width: 620rpx;
+  padding: 32rpx 28rpx 24rpx;
+  border-radius: 28rpx;
+  background-color: #0f2f4d;
+  box-sizing: border-box;
+}
+
+.time-sheet-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.time-sheet-value {
+  margin: 12rpx 0 20rpx;
+  font-size: 44rpx;
+  font-weight: 600;
+  text-align: center;
+}
+
+.time-wheel {
+  display: flex;
+  flex-direction: row;
+  height: 280rpx;
+  border-radius: 20rpx;
+  background-color: rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+.time-col {
+  flex: 1;
+  height: 280rpx;
+}
+
+.time-opt {
+  height: 56rpx;
+  line-height: 56rpx;
+  text-align: center;
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.time-opt-on {
+  color: #ffffff;
+  font-weight: 700;
+  background-color: rgba(52, 199, 89, 0.35);
+}
+
+.time-dialog-confirm {
+  margin-top: 24rpx;
+  height: 72rpx;
+  border-radius: 20rpx;
+  background-color: #34c759;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.sched-card-meta {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.sched-del {
+  margin-left: 16rpx;
+  padding: 10rpx 16rpx;
+  border-radius: 16rpx;
+  font-size: 22rpx;
+  color: #ff8a80;
+  background-color: rgba(227, 27, 35, 0.16);
+}
+
+.sched-add {
+  margin: 8rpx 0 24rpx;
+  height: 88rpx;
+  border-radius: 24rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.sched-draft-title {
+  margin-bottom: 8rpx;
+  font-size: 44rpx;
+  font-weight: 700;
+}
+
+.sched-section {
+  margin-top: 32rpx;
+  width: 100%;
+}
+
+.sched-section-rule {
+  padding-bottom: 32rpx;
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.16);
+}
+
+.sched-section .health-panel-title {
+  margin-bottom: 16rpx;
+}
+
+.sched-repeats {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+}
+
+.sched-chip {
+  flex: 1;
+  height: 56rpx;
+  margin-right: 12rpx;
+  border-radius: 16rpx;
+  background-color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22rpx;
+  font-weight: 600;
+}
+
+.sched-chip:last-child {
+  margin-right: 0;
+}
+
+.sched-chip-on {
+  background-color: #34c759;
+  color: #ffffff;
+}
+
+.sched-gap {
+  margin-top: 28rpx;
+}
+
+.sched-error {
+  margin-top: 20rpx;
+  font-size: 24rpx;
+  color: #ff8a80;
+}
+
+.sched-actions {
+  margin-top: 28rpx;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.sched-cancel,
+.sched-del-btn,
+.sched-save {
+  flex: 1;
+  height: 80rpx;
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.sched-cancel,
+.sched-del-btn {
+  margin-right: 12rpx;
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.sched-del-btn {
+  color: #ff8a80;
+}
+
+.sched-save {
+  margin-left: 12rpx;
+  background-color: #34c759;
+}
+
+.sched-save-off {
+  background-color: #3a4654;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.tab-text {
+  font-size: 18rpx;
   font-weight: 600;
 }
 
